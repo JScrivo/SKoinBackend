@@ -1,48 +1,54 @@
-﻿using MySql.Data.MySqlClient;
-using System;
+﻿using System;
+using System.IO;
 
 namespace Sheridan.SKoin.API
 {
     public static class Database
     {
-        private static MySqlConnection Connection;
+        private const string Store = "./Store";
+        private const string Users = Store + "/Users";
+        private const string Transactions = Store + "/Transactions.csv";
 
-        public static bool TryConnect()
+        public static bool TryInitialize()
         {
             try
             {
-                var builder = new MySqlConnectionStringBuilder
+                if (!Directory.Exists(Store))
                 {
-                    Server = "172.24.0.2",
-                    UserID = "skylar",
-                    Password = "A1@yeetme",
-                    Database = "SKoin"
-                };
+                    Directory.CreateDirectory(Store);
+                }
 
-                Connection = new MySqlConnection(builder.ConnectionString);
-                Connection.Open();
+                if (!Directory.Exists(Users))
+                {
+                    Directory.CreateDirectory(Users);
+                }
 
-                return true;
+                if (!File.Exists(Transactions))
+                {
+                    File.Create(Transactions);
+                }
             }
-            catch (Exception ex)
+            catch
             {
-                System.Diagnostics.Debug.WriteLine($"SQL Error: {ex.Message}");
                 return false;
             }
+            return true;
         }
 
         public static bool TryCreateUser(string hash, out Guid user)
         {
             user = Guid.NewGuid();
 
+            var location = GetUserLocation(user);
+
+            var info = new User(hash);
+
             try
             {
-                using (var command = new MySqlCommand($"INSERT INTO Users (GUID, Password) VALUES ('{user}', '{hash}');", Connection))
+                if (Json.TrySerialize(info, out string json))
                 {
-                    if (command.ExecuteNonQuery() > 0)
-                    {
-                        return true;
-                    }
+                    File.WriteAllText(location, json);
+                    return true;
                 }
             }
             catch { }
@@ -52,19 +58,12 @@ namespace Sheridan.SKoin.API
 
         public static bool TryGetPassword(Guid user, out string hash)
         {
-            try
+            if (TryGetUserInfo(user, out User info))
             {
-                using (var command = new MySqlCommand($"SELECT (Password) FROM Users WHERE GUID='{user}';", Connection))
-                {
-                    using (var reader = command.ExecuteReader())
-                    {
-                        reader.Read();
-                        hash = reader.GetString(0);
-                        return true;
-                    }
-                }
+                hash = info.Password;
+                return true;
             }
-            catch
+            else
             {
                 hash = string.Empty;
                 return false;
@@ -73,36 +72,27 @@ namespace Sheridan.SKoin.API
 
         public static bool TrySetPassword(Guid user, string hash)
         {
-            try
+            if (TryGetUserInfo(user, out User info))
             {
-                using (var command = new MySqlCommand($"UPDATE Users SET Password='{hash}' WHERE GUID='{user}';", Connection))
+                info.Password = hash;
+
+                if (TrySetUserInfo(user, info))
                 {
-                    if (command.ExecuteNonQuery() > 0)
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
-            catch { }
 
             return false;
         }
 
         public static bool TryGetBalance(Guid user, out ulong balance)
         {
-            try
+            if (TryGetUserInfo(user, out User info))
             {
-                using (var command = new MySqlCommand($"SELECT (Balance) FROM Users WHERE GUID='{user}';", Connection))
-                {
-                    using (var reader = command.ExecuteReader())
-                    {
-                        reader.Read();
-                        balance = reader.GetUInt64(0);
-                        return true;
-                    }
-                }
+                balance = info.Balance;
+                return true;
             }
-            catch
+            else
             {
                 balance = 0;
                 return false;
@@ -113,24 +103,36 @@ namespace Sheridan.SKoin.API
         {
             try
             {
-                if (TryGetBalance(fromUser, out ulong balance) && TryGetBalance(toUser, out _))
+                if (TryGetUserInfo(fromUser, out User fromUserInfo) && TryGetUserInfo(toUser, out User toUserInfo))
                 {
-                    if (balance >= amount)
+                    if (fromUserInfo.Balance >= amount)
                     {
-                        using (var transferCommand = new MySqlCommand($"UPDATE Users SET Balance=Balance-{amount} WHERE GUID='{fromUser}'; UPDATE Users SET Balance=Balance+{amount} WHERE GUID='{toUser}';", Connection))
-                        {
-                            if (transferCommand.ExecuteNonQuery() > 0)
-                            {
-                                try
-                                {
-                                    using (var logCommand = new MySqlCommand($"INSERT INTO Transactions (From, To, Amount) VALUES ('{fromUser}', '{toUser}', {amount});"))
-                                    {
-                                        transferCommand.ExecuteNonQuery();
-                                    }
-                                }
-                                catch { }
+                        var originalFromBalance = fromUserInfo.Balance;
+                        var originalToBalance = toUserInfo.Balance;
 
-                                return true;
+                        fromUserInfo.Balance -= amount;
+                        toUserInfo.Balance += amount;
+
+                        if (TrySetUserInfo(fromUser, fromUserInfo))
+                        {
+                            if (TrySetUserInfo(toUser, toUserInfo))
+                            {
+                                if (TryLogTransaction(new Transaction(fromUser, toUser, amount)))
+                                {
+                                    return true;
+                                }
+                                else
+                                {
+                                    fromUserInfo.Balance = originalFromBalance;
+                                    toUserInfo.Balance = originalToBalance;
+                                    TrySetUserInfo(fromUser, fromUserInfo);
+                                    TrySetUserInfo(toUser, toUserInfo);
+                                }
+                            }
+                            else
+                            {
+                                fromUserInfo.Balance = originalFromBalance;
+                                TrySetUserInfo(fromUser, fromUserInfo);
                             }
                         }
                     }
@@ -140,6 +142,107 @@ namespace Sheridan.SKoin.API
             catch
             {
                 return false;
+            }
+        }
+
+        private static bool TryGetUserInfo(Guid user, out User info)
+        {
+            try
+            {
+                var location = GetUserLocation(user);
+
+                if (File.Exists(location))
+                {
+                    return Json.TryDeserialize(File.ReadAllText(location), out info);
+                }
+            }
+            catch { }
+
+            info = default;
+            return false;
+        }
+
+        private static string GetUserLocation(Guid user)
+        {
+            return $"{Users}/{user}";
+        }
+
+        private static bool TrySetUserInfo(Guid user, User info)
+        {
+            try
+            {
+                var location = $"{Users}/{user}";
+
+                if (File.Exists(location) && Json.TrySerialize(info, out string json))
+                {
+                    File.WriteAllText(location, json);
+                    return true;
+                }
+            }
+            catch { }
+
+            return false;
+        }
+
+        private static bool TryLogTransaction(Transaction transaction)
+        {
+            try
+            {
+                File.AppendAllLines(Transactions, new[] { transaction.ToString() });
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private struct Transaction
+        {
+            public Guid From;
+            public Guid To;
+            public ulong Amount;
+
+            public Transaction(Guid from, Guid to, ulong amount)
+            {
+                From = from;
+                To = to;
+                Amount = amount;
+            }
+
+            public override string ToString()
+            {
+                return $"{From},{To},{Amount}";
+            }
+
+            public static bool TryParse(string s, out Transaction result)
+            {
+                var parts = s.Split(',');
+
+                if (parts.Length == 3 && Guid.TryParse(parts[0], out Guid from) && Guid.TryParse(parts[1], out Guid to) && ulong.TryParse(parts[2], out ulong amount))
+                {
+                    result = new Transaction(from, to, amount);
+                    return true;
+                }
+                else
+                {
+                    result = default;
+                    return false;
+                }
+            }
+        }
+
+        private class User
+        {
+            public ulong Balance { get; set; }
+            public string Password { get; set; }
+
+            public User() { }
+
+            public User(string hash)
+            {
+                Password = hash;
+                Balance = 0;
             }
         }
     }

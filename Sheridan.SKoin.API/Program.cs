@@ -17,9 +17,9 @@ namespace Sheridan.SKoin.API
 
             Console.WriteLine("Connecting to database...");
 
-            if (!Database.TryConnect())
+            if (!Database.TryInitialize())
             {
-                Console.WriteLine("Failed to connect to database.");
+                Console.WriteLine("Failed to init to database.");
                 return;
             }
 
@@ -33,7 +33,7 @@ namespace Sheridan.SKoin.API
 
             Server.Start(port);
 
-            Console.WriteLine("Server started. Enter 'stop' command to stop the server.");
+            Console.WriteLine("Server started. Enter 'stop' command to stop the server. Enter 'help' for a detailed list of commands.");
 
             string command;
             while (true)
@@ -43,6 +43,19 @@ namespace Sheridan.SKoin.API
                 if (command == "stop")
                 {
                     break;
+                }
+                else if (command == "help")
+                {
+                    WriteSeperator();
+
+                    Console.WriteLine("help                          - Display this information.");
+                    Console.WriteLine("newuser                       - Create a new user.");
+                    Console.WriteLine("passwd <user>                 - Change a password.");
+                    Console.WriteLine("stop                          - Stops the server.");
+                    Console.WriteLine("transfer <from> <to> <amount> - Transfer funds from one user to another.");
+                    Console.WriteLine("user <user>                   - Display user information.");
+
+                    WriteSeperator();
                 }
                 else if (command == "newuser")
                 {
@@ -70,11 +83,13 @@ namespace Sheridan.SKoin.API
                     {
                         if (Database.TryGetBalance(user, out ulong balance) && Database.TryGetPassword(user, out string hash))
                         {
-                            Console.WriteLine(string.Empty.PadLeft(Console.BufferWidth, '='));
+                            WriteSeperator();
+
                             Console.WriteLine($"User: {user}");
                             Console.WriteLine($"Balance: {balance}");
                             Console.WriteLine($"Password Hash: {hash}");
-                            Console.WriteLine(string.Empty.PadLeft(Console.BufferWidth, '='));
+
+                            WriteSeperator();
                         }
                         else
                         {
@@ -120,6 +135,11 @@ namespace Sheridan.SKoin.API
             Server.Stop();
 
             Console.WriteLine("Server stopped.");
+        }
+
+        private static void WriteSeperator()
+        {
+            Console.WriteLine(string.Empty.PadLeft(Console.BufferWidth, '='));
         }
 
         private static void InitServices()
