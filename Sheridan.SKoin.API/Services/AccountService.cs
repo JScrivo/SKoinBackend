@@ -4,8 +4,16 @@ namespace Sheridan.SKoin.API.Services
 {
     public class AccountService
     {
+        /// <summary>
+        /// The JSON response that is returned if the request is unsuccessful.
+        /// </summary>
         private static readonly string FailedRequest = $"{{\"{nameof(RegisterResponse.Success)}\": {false}}}";
 
+        /// <summary>
+        /// API for registering new accounts associated with a secure hash.
+        /// </summary>
+        /// <param name="text">The data sent by the client.</param>
+        /// <returns>The response to send to the client.</returns>
         [Service("/api/account/register", ServiceType.Text)]
         public string RegisterAccount(string text)
         {
@@ -32,6 +40,11 @@ namespace Sheridan.SKoin.API.Services
             return null;
         }
 
+        /// <summary>
+        /// API for getting account info and balances.
+        /// </summary>
+        /// <param name="text">The data sent by the client.</param>
+        /// <returns>The response to send to the client.</returns>
         [Service("/api/account/info", ServiceType.Text)]
         public string GetInfo(string text)
         {
@@ -58,6 +71,11 @@ namespace Sheridan.SKoin.API.Services
             return null;
         }
 
+        /// <summary>
+        /// API for transfering funds between accounts.
+        /// </summary>
+        /// <param name="text">The data sent by the client.</param>
+        /// <returns>The response to send to the client.</returns>
         [Service("/api/account/transfer", ServiceType.Text)]
         public string Transfer(string text)
         {

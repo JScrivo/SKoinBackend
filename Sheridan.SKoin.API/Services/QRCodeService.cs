@@ -6,7 +6,7 @@ namespace Sheridan.SKoin.API.Services
     public class QRCodeService
     {
         /// <summary>
-        /// API for obtaining QR Codes for GUIDs
+        /// API for obtaining QR Codes for GUIDs.
         /// </summary>
         /// <param name="text">The data sent by the client.</param>
         /// <returns>The response to send to the client.</returns>
