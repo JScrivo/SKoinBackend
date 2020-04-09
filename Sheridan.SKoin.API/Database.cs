@@ -41,6 +41,8 @@ namespace Sheridan.SKoin.API
 
             var location = GetUserLocation(user);
 
+            if (File.Exists(location)) return false;
+
             var info = new User(hash);
 
             try
@@ -56,11 +58,11 @@ namespace Sheridan.SKoin.API
             return false;
         }
 
-        public static bool TryGetPassword(Guid user, out string hash)
+        public static bool TryGetHash(Guid user, out string hash)
         {
             if (TryGetUserInfo(user, out User info))
             {
-                hash = info.Password;
+                hash = info.Hash;
                 return true;
             }
             else
@@ -70,11 +72,11 @@ namespace Sheridan.SKoin.API
             }
         }
 
-        public static bool TrySetPassword(Guid user, string hash)
+        public static bool TrySetHash(Guid user, string hash)
         {
             if (TryGetUserInfo(user, out User info))
             {
-                info.Password = hash;
+                info.Hash = hash;
 
                 if (TrySetUserInfo(user, info))
                 {
@@ -235,13 +237,13 @@ namespace Sheridan.SKoin.API
         private class User
         {
             public ulong Balance { get; set; }
-            public string Password { get; set; }
+            public string Hash { get; set; }
 
             public User() { }
 
             public User(string hash)
             {
-                Password = hash;
+                Hash = hash;
                 Balance = 0;
             }
         }

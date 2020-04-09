@@ -1,7 +1,5 @@
 ﻿using Sheridan.SKoin.API.Core;
 using System;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Sheridan.SKoin.API
 {
@@ -50,7 +48,6 @@ namespace Sheridan.SKoin.API
 
                     Console.WriteLine("help                          - Display this information.");
                     Console.WriteLine("newuser                       - Create a new user.");
-                    Console.WriteLine("passwd <user>                 - Change a password.");
                     Console.WriteLine("stop                          - Stops the server.");
                     Console.WriteLine("transfer <from> <to> <amount> - Transfer funds from one user to another.");
                     Console.WriteLine("user <user>                   - Display user information.");
@@ -59,13 +56,11 @@ namespace Sheridan.SKoin.API
                 }
                 else if (command == "newuser")
                 {
-                    Console.Write("Enter new password: ");
+                    Console.Write("Enter new password hash: ");
 
-                    if (Database.TryCreateUser(Convert.ToBase64String(
-                            SHA256.Create().ComputeHash(
-                                Encoding.UTF8.GetBytes(Console.ReadLine())
-                                )
-                            ), out Guid newUser))
+                    var input = Console.ReadLine();
+                    var buffer = new Span<byte>(new byte[input.Length * 3 / 4]);
+                    if (Convert.TryFromBase64String(input, buffer, out int written) && Database.TryCreateUser(Convert.ToBase64String(buffer.Slice(0, written)), out Guid newUser))
                     {
                         Console.WriteLine($"User \"{newUser}\" created successfully.");
                     }
@@ -81,32 +76,15 @@ namespace Sheridan.SKoin.API
                 {
                     if (parts[0] == "user")
                     {
-                        if (Database.TryGetBalance(user, out ulong balance) && Database.TryGetPassword(user, out string hash))
+                        if (Database.TryGetBalance(user, out ulong balance) && Database.TryGetHash(user, out string hash))
                         {
                             WriteSeperator();
 
                             Console.WriteLine($"User: {user}");
                             Console.WriteLine($"Balance: {balance}");
-                            Console.WriteLine($"Password Hash: {hash}");
+                            Console.WriteLine($"Hash: {hash}");
 
                             WriteSeperator();
-                        }
-                        else
-                        {
-                            Console.WriteLine($"Entry not found for user \"{user}\".");
-                        }
-                    }
-                    else if (parts[0] == "passwd")
-                    {
-                        Console.Write("Enter new password: ");
-
-                        if (Database.TrySetPassword(user, Convert.ToBase64String(
-                            SHA256.Create().ComputeHash(
-                                Encoding.UTF8.GetBytes(Console.ReadLine())
-                                )
-                            )))
-                        {
-                            Console.WriteLine("Password has been changed.");
                         }
                         else
                         {
