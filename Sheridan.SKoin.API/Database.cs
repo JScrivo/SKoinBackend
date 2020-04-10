@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Sheridan.SKoin.API
@@ -8,6 +9,8 @@ namespace Sheridan.SKoin.API
         private const string Store = "./Store";
         private const string Users = Store + "/Users";
         private const string Transactions = Store + "/Transactions.csv";
+        private const string Promotions = Store + "/Promotions";
+        private const string Special = Store + "/Special";
 
         public static bool TryInitialize()
         {
@@ -21,6 +24,16 @@ namespace Sheridan.SKoin.API
                 if (!Directory.Exists(Users))
                 {
                     Directory.CreateDirectory(Users);
+                }
+
+                if (!Directory.Exists(Promotions))
+                {
+                    Directory.CreateDirectory(Promotions);
+                }
+
+                if (!Directory.Exists(Special))
+                {
+                    Directory.CreateDirectory(Special);
                 }
 
                 if (!File.Exists(Transactions))
@@ -101,6 +114,53 @@ namespace Sheridan.SKoin.API
             }
         }
 
+        public static bool TryGetEnterprise(Guid user, out bool enterprise)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                enterprise = info.Enterprise;
+                return true;
+            }
+            else
+            {
+                enterprise = false;
+                return false;
+            }
+        }
+
+        public static bool TrySetEnterprise(Guid user, bool enterprise)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                info.Enterprise = enterprise;
+                return TrySetUserInfo(user, info);
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public static string[] GetPromotions(ulong maxResults)
+        {
+            var result = new List<string>();
+
+            foreach (var promo in Directory.GetFiles(Promotions))
+            {
+                if (maxResults == 0) break;
+
+                try
+                {
+                    result.Add(File.ReadAllText(promo));
+
+                    maxResults--;
+                }
+                catch { }
+            }
+
+            return result.ToArray();
+        }
+
         public static bool TryTransact(Guid fromUser, Guid toUser, ulong amount)
         {
             try
@@ -147,6 +207,48 @@ namespace Sheridan.SKoin.API
             }
         }
 
+        public static bool TryGetSpecial<T>(string name, out T data)
+        {
+            data = default;
+
+            var location = GetSpecialLocation(name);
+
+            if (File.Exists(location))
+            {
+                var content = File.ReadAllText(location);
+
+                if (Json.TryDeserialize(content, out T obj))
+                {
+                    data = obj;
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public static bool TrySetSpecial<T>(string name, T data)
+        {
+            var location = GetSpecialLocation(name);
+
+            if (File.Exists(location))
+            {
+                if (Json.TrySerialize(data, out string json))
+                {
+                    try
+                    {
+                        File.WriteAllText(location, json);
+
+                        return true;
+                    }
+                    catch { }
+                }
+            }
+
+            return false;
+        }
+
         private static bool TryGetUserInfo(Guid user, out User info)
         {
             try
@@ -166,14 +268,19 @@ namespace Sheridan.SKoin.API
 
         private static string GetUserLocation(Guid user)
         {
-            return $"{Users}/{user}";
+            return $"{Users}/{user}.json";
+        }
+
+        private static string GetSpecialLocation(string special)
+        {
+            return $"{Special}/{special}.json";
         }
 
         private static bool TrySetUserInfo(Guid user, User info)
         {
             try
             {
-                var location = $"{Users}/{user}";
+                var location = GetUserLocation(user);
 
                 if (File.Exists(location) && Json.TrySerialize(info, out string json))
                 {
@@ -238,6 +345,7 @@ namespace Sheridan.SKoin.API
         {
             public ulong Balance { get; set; }
             public string Hash { get; set; }
+            public bool Enterprise { get; set; }
 
             public User() { }
 
@@ -245,6 +353,7 @@ namespace Sheridan.SKoin.API
             {
                 Hash = hash;
                 Balance = 0;
+                Enterprise = false;
             }
         }
     }
