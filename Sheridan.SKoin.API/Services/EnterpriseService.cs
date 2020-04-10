@@ -5,17 +5,11 @@ namespace Sheridan.SKoin.API.Services
 {
     public class EnterpriseService
     {
-        /// <summary>
-        /// The JSON response that is returned if the request is unsuccessful.
-        /// </summary>
+        [Documentation.Description("The JSON response that is returned if the request is unsuccessful.")]
         private static readonly string FailedRequest = $"{{\"{nameof(UpgradeResponse.Success)}\": {false}}}";
 
-        /// <summary>
-        /// API for upgrading a regular account to an enterprise account.
-        /// </summary>
-        /// <param name="text">The data sent by the client.</param>
-        /// <returns>The response to send to the client.</returns>
-        [Service("/api/enterprise/upgrade", ServiceType.Text)]
+        [Service("/api/enterprise/upgrade", ServiceType.Text, typeof(UpgradeRequest), typeof(UpgradeResponse))]
+        [Documentation.Description("API for upgrading a regular account to an enterprise account.")]
         public string UpgradeAccount(string text)
         {
             if (Json.TryDeserialize(text, out UpgradeRequest request) && request.IsValid() && IsValidIdAndHash(request.GetId(), request.Hash))
@@ -38,12 +32,8 @@ namespace Sheridan.SKoin.API.Services
             return null;
         }
 
-        /// <summary>
-        /// API for retrieving current promotions.
-        /// </summary>
-        /// <param name="text">The data sent by the client.</param>
-        /// <returns>The response to send to the client.</returns>
-        [Service("/api/promotions", ServiceType.Text)]
+        [Service("/api/promotions", ServiceType.Text, typeof(PromotionsRequest), typeof(PromotionsResponse))]
+        [Documentation.Description("API for retrieving current promotions.")]
         public static string GetPromotions(string text)
         {
             if (Json.TryDeserialize(text, out PromotionsRequest request))
@@ -66,12 +56,8 @@ namespace Sheridan.SKoin.API.Services
             return null;
         }
 
-        /// <summary>
-        /// API for creating promotions.
-        /// </summary>
-        /// <param name="text">The data sent by the client.</param>
-        /// <returns>The response to send to the client.</returns>
-        [Service("/api/enterprise/promotion", ServiceType.Text)]
+        [Service("/api/enterprise/promotion", ServiceType.Text, typeof(PromotionPostRequest), typeof(UpgradeResponse))]
+        [Documentation.Description("API for creating promotions.")]
         public static string CreatePromotion(string text)
         {
             if (Json.TryDeserialize(text, out PromotionPostRequest request) && request.IsValid() && 
@@ -144,7 +130,9 @@ namespace Sheridan.SKoin.API.Services
 
         private class UpgradeRequest
         {
+            [Documentation.Description("The user id that was registered with the client's secret hash.")]
             public string Id { get; set; }
+            [Documentation.Description("The secret hash for the client.")]
             public string Hash { get; set; }
 
             public virtual bool IsValid()
@@ -171,30 +159,44 @@ namespace Sheridan.SKoin.API.Services
 
         private class UpgradeResponse
         {
+            [Documentation.Description("Whether or not the request was successful.")]
             public bool Success { get; set; } = false;
         }
 
         private class PromotionsRequest
         {
+            [Documentation.Description("The maximum number of results to return.")]
             public ulong MaximumResults { get; set; }
         }
 
         private class PromotionsResponse
         {
+            [Documentation.Children]
+            [Documentation.Description("The currently active promotions")]
             public Promotion[] Promotions { get; set; }
         }
 
         private class Promotion
         {
+            [Documentation.Description("The id of the promotion.")]
             public string Id { get; set; }
+            [Documentation.Description("The title of the promotion.")]
             public string Title { get; set; }
+            [Documentation.Description("The URI to the icon image for the promotion.")]
             public string IconURI { get; set; }
+            [Documentation.Description("The URI to the cover image for the promotion.")]
             public string CoverURI { get; set; }
+            [Documentation.Description("The cost of the advertised item. 0 if the promotion is not for a specific item with a cost.")]
             public ulong Cost { get; set; }
+            [Documentation.Description("The description of the promotion.")]
             public string Description { get; set; }
+            [Documentation.Description("The length of the promotion, in days.")]
             public ulong Days { get; set; }
+            [Documentation.Description("The number of likes this promotion has.")]
             public ulong Likes { get; set; }
+            [Documentation.Description("The start date and time of the promotion, in UTC.")]
             public DateTime StartTime { get; set; }
+            [Documentation.Description("The end date and time of the promotion, in UTC.")]
             public DateTime EndTime => StartTime.AddDays(Days);
 
             public bool IsExpired()
@@ -205,11 +207,17 @@ namespace Sheridan.SKoin.API.Services
 
         private class PromotionPostRequest : UpgradeRequest
         {
+            [Documentation.Description("The title of the promotion.")]
             public string Title { get; set; }
+            [Documentation.Description("The URI to the icon image for the promotion.")]
             public string IconURI { get; set; }
+            [Documentation.Description("The URI to the cover image for the promotion.")]
             public string CoverURI { get; set; }
+            [Documentation.Description("The cost of the advertised item. 0 if the promotion is not for a specific item with a cost.")]
             public ulong Cost { get; set; }
+            [Documentation.Description("The description of the promotion.")]
             public string Description { get; set; } = string.Empty;
+            [Documentation.Description("The length of the promotion, in days.")]
             public ulong Days { get; set; }
 
             public override bool IsValid()

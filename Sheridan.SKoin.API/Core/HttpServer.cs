@@ -46,7 +46,7 @@ namespace Sheridan.SKoin.API.Core
                     if (method.ReturnType == (attrib.Type == ServiceType.Text ? typeof(string) : typeof(byte[])))
                     {
                         var path = attrib.Path.ToLower();
-                        Services.Add(path, new Service { Path = path, Method = method, Target = instance });
+                        Services.Add(path, new Service { Attribute = attrib, Path = path, Method = method, Type = attrib.Type, Target = instance, MetaService = attrib.MetaService });
                         result.Add(path);
                     }
                 }
@@ -248,7 +248,7 @@ namespace Sheridan.SKoin.API.Core
         {
             if (Services.TryGetValue(request.Path, out Service service))
             {
-                return service.RunService(request.Data);
+                return service.RunService(request.Data, Services.Values.ToArray());
             }
             else
             {
@@ -265,21 +265,23 @@ namespace Sheridan.SKoin.API.Core
             public byte[] Data { get; set; } = new byte[0];
         }
 
-        private class Service
+        public class Service
         {
+            public ServiceAttribute Attribute { get; set; }
             public string Path { get; set; }
             public ServiceType Type { get; set; }
             public MethodInfo Method { get; set; }
             public object Target { get; set; }
+            public bool MetaService { get; set; }
 
-            public byte[] RunService(byte[] data)
+            public byte[] RunService(byte[] data, Service[] services)
             {
                 try
                 {
                     switch (Type)
                     {
                         case ServiceType.Text:
-                            var text = RunTextService(Encoding.UTF8.GetString(data));
+                            var text = RunTextService(Encoding.UTF8.GetString(data), services);
                             if (text is null)
                             {
                                 return Encoding.UTF8.GetBytes(BadRequest);
@@ -290,7 +292,7 @@ namespace Sheridan.SKoin.API.Core
                             }
 
                         case ServiceType.Binary:
-                            var binary = RunBinaryService(data);
+                            var binary = RunBinaryService(data, services);
                             if (binary is null)
                             {
                                 return Encoding.UTF8.GetBytes(BadRequest);
@@ -311,14 +313,14 @@ namespace Sheridan.SKoin.API.Core
                 }
             }
 
-            private byte[] RunBinaryService(byte[] data)
+            private byte[] RunBinaryService(byte[] data, Service[] services)
             {
-                return (byte[])Method.Invoke(Target, new[] { data });
+                return (byte[])Method.Invoke(Target, MetaService ? new object[] { data, services } : new[] { data });
             }
 
-            private string RunTextService(string data)
+            private string RunTextService(string data, Service[] services)
             {
-                return (string)Method.Invoke(Target, new[] { data });
+                return (string)Method.Invoke(Target, MetaService ? new object[] { data, services } : new[] { data });
             }
         }
 

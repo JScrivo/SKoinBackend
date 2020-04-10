@@ -4,17 +4,11 @@ namespace Sheridan.SKoin.API.Services
 {
     public class AccountService
     {
-        /// <summary>
-        /// The JSON response that is returned if the request is unsuccessful.
-        /// </summary>
+        [Documentation.Description("The JSON response that is returned if the request is unsuccessful.")]
         private static readonly string FailedRequest = $"{{\"{nameof(RegisterResponse.Success)}\": {false}}}";
 
-        /// <summary>
-        /// API for registering new accounts associated with a secure hash.
-        /// </summary>
-        /// <param name="text">The data sent by the client.</param>
-        /// <returns>The response to send to the client.</returns>
-        [Service("/api/account/register", ServiceType.Text)]
+        [Service("/api/account/register", ServiceType.Text, typeof(RegisterRequest), typeof(RegisterResponse))]
+        [Documentation.Description("API for registering new accounts associated with a secure hash.")]
         public string RegisterAccount(string text)
         {
             if (Json.TryDeserialize(text, out RegisterRequest request) && request.IsValid())
@@ -40,12 +34,8 @@ namespace Sheridan.SKoin.API.Services
             return null;
         }
 
-        /// <summary>
-        /// API for getting account info and balances.
-        /// </summary>
-        /// <param name="text">The data sent by the client.</param>
-        /// <returns>The response to send to the client.</returns>
-        [Service("/api/account/info", ServiceType.Text)]
+        [Service("/api/account/info", ServiceType.Text, typeof(InfoRequest), typeof(InfoResponse))]
+        [Documentation.Description("API for getting account info and balances.")]
         public string GetInfo(string text)
         {
             if (Json.TryDeserialize(text, out InfoRequest request) && request.IsValid() && IsValidIdAndHash(request.GetId(), request.Hash))
@@ -71,12 +61,8 @@ namespace Sheridan.SKoin.API.Services
             return null;
         }
 
-        /// <summary>
-        /// API for transfering funds between accounts.
-        /// </summary>
-        /// <param name="text">The data sent by the client.</param>
-        /// <returns>The response to send to the client.</returns>
-        [Service("/api/account/transfer", ServiceType.Text)]
+        [Service("/api/account/transfer", ServiceType.Text, typeof(TransferRequest), typeof(TransferResponse))]
+        [Documentation.Description("API for transfering funds between accounts.")]
         public string Transfer(string text)
         {
             if (Json.TryDeserialize(text, out TransferRequest request) && request.IsValid() && IsValidIdAndHash(request.GetId(), request.Hash))
@@ -108,6 +94,7 @@ namespace Sheridan.SKoin.API.Services
 
         private class RegisterRequest
         {
+            [Documentation.Description("The secret hash for the client.")]
             public string Hash { get; set; }
 
             public virtual bool IsValid()
@@ -129,12 +116,15 @@ namespace Sheridan.SKoin.API.Services
 
         private class RegisterResponse
         {
+            [Documentation.Description("Whether or not the request was successful.")]
             public bool Success { get; set; } = false;
+            [Documentation.Description("The user id that was registered with the client's secret hash.")]
             public string Id { get; set; } = Guid.Empty.ToString();
         }
 
         private class InfoRequest : RegisterRequest
         {
+            [Documentation.Description("The user id that was registered with the client's secret hash.")]
             public string Id { get; set; }
 
             public override bool IsValid()
@@ -150,13 +140,17 @@ namespace Sheridan.SKoin.API.Services
 
         private class InfoResponse
         {
+            [Documentation.Description("Whether or not the request was successful.")]
             public bool Success { get; set; } = false;
+            [Documentation.Description("The current balance of the account.")]
             public ulong Balance { get; set; } = 0;
         }
 
         private class TransferRequest : InfoRequest
         {
+            [Documentation.Description("The user id of the recipient.")]
             public string Recipient { get; set; }
+            [Documentation.Description("The amount to send to the recipient.")]
             public ulong Amount { get; set; }
 
             public override bool IsValid()
@@ -172,6 +166,7 @@ namespace Sheridan.SKoin.API.Services
 
         private class TransferResponse
         {
+            [Documentation.Description("Whether or not the request was successful.")]
             public bool Success { get; set; } = false;
         }
     }
