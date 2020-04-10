@@ -126,8 +126,11 @@ namespace Sheridan.SKoin.API
 
             foreach (var service in services)
             {
-                Console.WriteLine($"\tLoaded service {service.Name}...");
-                Server.AddService(service);
+                Console.WriteLine($"\tLoading service {service.Name}...");
+                foreach (var path in Server.AddService(service))
+                {
+                    Console.WriteLine($"\t\t@ {path}");
+                }
             }
 
             Console.WriteLine(string.Empty);

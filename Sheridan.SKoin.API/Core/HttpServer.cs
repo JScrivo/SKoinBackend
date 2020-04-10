@@ -31,9 +31,11 @@ namespace Sheridan.SKoin.API.Core
         /// Add a service to the server's scope.
         /// </summary>
         /// <param name="service">The type of service to add.</param>
-        public void AddService(Type service)
+        /// <returns>An array of paths registered by the service.</returns>
+        public string[] AddService(Type service)
         {
             var instance = service.GetConstructor(Type.EmptyTypes).Invoke(null);
+            var result = new List<string>();
 
             foreach (var method in service.GetMethods())
             {
@@ -45,9 +47,12 @@ namespace Sheridan.SKoin.API.Core
                     {
                         var path = attrib.Path.ToLower();
                         Services.Add(path, new Service { Path = path, Method = method, Target = instance });
+                        result.Add(path);
                     }
                 }
             }
+
+            return result.ToArray();
         }
 
         /// <summary>
