@@ -161,6 +161,42 @@ namespace Sheridan.SKoin.API
             return result.ToArray();
         }
 
+        public static bool TryCreatePromotion(string name, string promotion)
+        {
+            var location = GetPromotionLocation(name);
+
+            if (File.Exists(location)) return false;
+
+            try
+            {
+                File.WriteAllText(location, promotion);
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static bool TryRemovePromotion(string name)
+        {
+            var location = GetPromotionLocation(name);
+
+            if (File.Exists(location))
+            {
+                try
+                {
+                    File.Delete(location);
+
+                    return true;
+                }
+                catch { }
+            }
+
+            return false;
+        }
+
         public static bool TryTransact(Guid fromUser, Guid toUser, ulong amount)
         {
             try
@@ -269,6 +305,11 @@ namespace Sheridan.SKoin.API
         private static string GetUserLocation(Guid user)
         {
             return $"{Users}/{user}.json";
+        }
+
+        private static string GetPromotionLocation(string promotion)
+        {
+            return $"{Promotions}/{promotion}.json";
         }
 
         private static string GetSpecialLocation(string special)
