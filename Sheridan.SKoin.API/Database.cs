@@ -161,11 +161,11 @@ namespace Sheridan.SKoin.API
             return result.ToArray();
         }
 
-        public static bool TryCreatePromotion(string name, string promotion)
+        public static bool TryCreatePromotion(string name, string promotion, bool allowOverride = false)
         {
             var location = GetPromotionLocation(name);
 
-            if (File.Exists(location)) return false;
+            if (!allowOverride && File.Exists(location)) return false;
 
             try
             {
@@ -177,6 +177,24 @@ namespace Sheridan.SKoin.API
             {
                 return false;
             }
+        }
+
+        public static bool TryGetPromotion(string name, out string promotion)
+        {
+            var location = GetPromotionLocation(name);
+
+            if (File.Exists(location))
+            {
+                try
+                {
+                    promotion = File.ReadAllText(location);
+                    return true;
+                }
+                catch { }
+            }
+
+            promotion = null;
+            return false;
         }
 
         public static bool TryRemovePromotion(string name)

@@ -56,6 +56,43 @@ namespace Sheridan.SKoin.API.Services
             return null;
         }
 
+        [Service("/api/promotions/like", ServiceType.Text, typeof(PromotionLikeRequest), typeof(UpgradeResponse))]
+        [Documentation.Description("API for liking promotions.")]
+        public static string LikePromotion(string text)
+        {
+            if (Json.TryDeserialize(text, out PromotionLikeRequest request) && request.IsValid() && IsValidIdAndHash(request.GetId(), request.Hash))
+            {
+                var result = new UpgradeResponse { Success = false };
+
+                if (Database.TryGetPromotion(request.Id, out string json))
+                {
+                    if (Json.TryDeserialize(json, out Promotion promotion))
+                    {
+                        promotion.Likes++;
+
+                        if (Json.TrySerialize(promotion, out json))
+                        {
+                            if (Database.TryCreatePromotion(request.Id, json, true))
+                            {
+                                result.Success = true;
+                            }
+                        }
+                    }
+                }
+
+                if (Json.TrySerialize(result, out json))
+                {
+                    return json;
+                }
+                else
+                {
+                    return FailedRequest;
+                }
+            }
+
+            return null;
+        }
+
         [Service("/api/enterprise/promotion", ServiceType.Text, typeof(PromotionPostRequest), typeof(UpgradeResponse))]
         [Documentation.Description("API for creating promotions.")]
         public static string CreatePromotion(string text)
@@ -174,6 +211,22 @@ namespace Sheridan.SKoin.API.Services
             [Documentation.Children]
             [Documentation.Description("The currently active promotions")]
             public Promotion[] Promotions { get; set; }
+        }
+
+        private class PromotionLikeRequest : UpgradeRequest
+        {
+            [Documentation.Description("The id of the promotion to like.")]
+            public string PromotionId { get; set; }
+
+            public override bool IsValid()
+            {
+                return base.IsValid() && Guid.TryParse(PromotionId, out _);
+            }
+
+            public Guid GetPromotionId()
+            {
+                return Guid.Parse(PromotionId);
+            }
         }
 
         private class Promotion
