@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace Sheridan.SKoin.API
 {
@@ -56,6 +57,8 @@ namespace Sheridan.SKoin.API
 
             if (File.Exists(location)) return false;
 
+            if (TryGetUser(hash, out _)) return false;
+
             var info = new User(hash);
 
             try
@@ -64,6 +67,34 @@ namespace Sheridan.SKoin.API
                 {
                     File.WriteAllText(location, json);
                     return true;
+                }
+            }
+            catch { }
+
+            return false;
+        }
+
+        public static bool TryGetUser(string hash, out Guid user)
+        {
+            user = Guid.Empty;
+
+            try
+            {
+                foreach (var userData in Directory.GetFiles(Users))
+                {
+                    if (Json.TryDeserialize(File.ReadAllText(userData), out User data))
+                    {
+                        if (data.Hash == hash)
+                        {
+                            var match = Regex.Match(userData, @"\\([\d\w-]+).\w+");
+
+                            if (match.Success)
+                            {
+                                user = Guid.Parse(match.Groups[1].Value);
+                                return true;
+                            }
+                        }
+                    }
                 }
             }
             catch { }

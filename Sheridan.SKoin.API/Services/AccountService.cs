@@ -34,6 +34,33 @@ namespace Sheridan.SKoin.API.Services
             return null;
         }
 
+        [Service("/api/login", ServiceType.Text, typeof(RegisterRequest), typeof(RegisterResponse))]
+        [Documentation.Description("API for retrieving the ID of a client that was already registered.")]
+        public string Login(string text)
+        {
+            if (Json.TryDeserialize(text, out RegisterRequest request) && request.IsValid())
+            {
+                var result = new RegisterResponse();
+
+                if (Database.TryGetUser(request.Hash, out Guid user))
+                {
+                    result.Success = true;
+                    result.Id = user.ToString();
+                }
+
+                if (Json.TrySerialize(result, out string json))
+                {
+                    return json;
+                }
+                else
+                {
+                    return FailedRequest;
+                }
+            }
+
+            return null;
+        }
+
         [Service("/api/account/info", ServiceType.Text, typeof(InfoRequest), typeof(InfoResponse))]
         [Documentation.Description("API for getting account info and balances.")]
         public string GetInfo(string text)
