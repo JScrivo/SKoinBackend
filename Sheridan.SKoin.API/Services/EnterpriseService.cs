@@ -176,7 +176,7 @@ namespace Sheridan.SKoin.API.Services
             {
                 try
                 {
-                    return Guid.TryParse(Id, out _) && Convert.FromBase64String(Hash).Length == 32;
+                    return Guid.TryParse(Id, out _); //&& Convert.FromBase64String(Hash).Length == 32; TODO: Uncomment this. Only for development.
                 }
                 catch (FormatException)
                 {

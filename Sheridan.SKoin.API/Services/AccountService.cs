@@ -126,6 +126,8 @@ namespace Sheridan.SKoin.API.Services
 
             public virtual bool IsValid()
             {
+                return true; //TODO: Remove. For development purposes only.
+
                 try
                 {
                     return Convert.FromBase64String(Hash).Length == 32;
