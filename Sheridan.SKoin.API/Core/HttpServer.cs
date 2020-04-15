@@ -220,6 +220,8 @@ namespace Sheridan.SKoin.API.Core
                 }
                 request.Data = requestData.ToArray();
 
+                Console.WriteLine($"{request.Method} {request.Path}");
+
                 byte[] returnData;
                 if (state == HttpReceiveState.Invalid)
                 {
