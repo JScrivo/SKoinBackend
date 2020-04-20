@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 
 namespace Sheridan.SKoin.API.Core
 {
@@ -98,6 +99,15 @@ namespace Sheridan.SKoin.API.Core
 
                 var network = client.GetStream();
                 var stream = new MemoryStream();
+
+                int times = 500;
+                while (client.Available <= 0)
+                {
+                    Thread.Sleep(10);
+                    times--;
+
+                    if (times <= 0) break;
+                }
 
                 var requestBytes = new byte[client.Available];
                 client.Client.Receive(requestBytes);
@@ -220,7 +230,9 @@ namespace Sheridan.SKoin.API.Core
                 }
                 request.Data = requestData.ToArray();
 
-                Console.WriteLine($"{request.Method} {request.Path}");
+                Console.WriteLine(string.Empty);
+                Console.WriteLine(Encoding.UTF8.GetString(requestBytes));
+                Console.WriteLine(string.Empty);
 
                 byte[] returnData;
                 if (state == HttpReceiveState.Invalid)
@@ -233,6 +245,10 @@ namespace Sheridan.SKoin.API.Core
                 }
 
                 client.Client.Send(returnData);
+
+                Console.WriteLine(string.Empty);
+                Console.WriteLine(Encoding.UTF8.GetString(returnData));
+                Console.WriteLine(string.Empty);
             }
             catch (Exception ex)
             {

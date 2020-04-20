@@ -145,6 +145,62 @@ namespace Sheridan.SKoin.API
             }
         }
 
+        public static bool TryGetName(Guid user, out string name)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                name = info.Name;
+                return true;
+            }
+            else
+            {
+                name = null;
+                return false;
+            }
+        }
+
+        public static bool TryGetEmail(Guid user, out string email)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                email = info.Email;
+                return true;
+            }
+            else
+            {
+                email = null;
+                return false;
+            }
+        }
+
+        public static bool TryGetPhone(Guid user, out string phone)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                phone = info.Phone;
+                return true;
+            }
+            else
+            {
+                phone = null;
+                return false;
+            }
+        }
+
+        public static bool TryGetAddress(Guid user, out string address)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                address = info.Address;
+                return true;
+            }
+            else
+            {
+                address = null;
+                return false;
+            }
+        }
+
         public static bool TryGetEnterprise(Guid user, out bool enterprise)
         {
             if (TryGetUserInfo(user, out User info))
@@ -155,6 +211,76 @@ namespace Sheridan.SKoin.API
             else
             {
                 enterprise = false;
+                return false;
+            }
+        }
+
+        public static bool TryGetTransactions(Guid user, out Transaction[] transactions)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                transactions = info.Transactions.ToArray();
+                return true;
+            }
+            else
+            {
+                transactions = null;
+                return false;
+            }
+        }
+
+        public static bool TrySetName(Guid user, string name)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                info.Name = name;
+
+                return TrySetUserInfo(user, info);
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public static bool TrySetEmail(Guid user, string email)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                info.Email = email;
+
+                return TrySetUserInfo(user, info);
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public static bool TrySetPhone(Guid user, string phone)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                info.Phone = phone;
+
+                return TrySetUserInfo(user, info);
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public static bool TrySetAddress(Guid user, string address)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                info.Address = address;
+
+                return TrySetUserInfo(user, info);
+            }
+            else
+            {
                 return false;
             }
         }
@@ -388,7 +514,8 @@ namespace Sheridan.SKoin.API
             try
             {
                 File.AppendAllLines(Transactions, new[] { transaction.ToString() });
-                return true;
+                return TryLogUserTransaction(transaction.From, transaction) &&
+                    TryLogUserTransaction(transaction.To, transaction);
             }
             catch
             {
@@ -396,46 +523,30 @@ namespace Sheridan.SKoin.API
             }
         }
 
-        private struct Transaction
+        private static bool TryLogUserTransaction(Guid user, Transaction transaction)
         {
-            public Guid From;
-            public Guid To;
-            public ulong Amount;
-
-            public Transaction(Guid from, Guid to, ulong amount)
+            if (TryGetUserInfo(user, out User info))
             {
-                From = from;
-                To = to;
-                Amount = amount;
+                info.Transactions.Add(transaction);
+
+                return TrySetUserInfo(user, info);
             }
-
-            public override string ToString()
+            else
             {
-                return $"{From},{To},{Amount}";
-            }
-
-            public static bool TryParse(string s, out Transaction result)
-            {
-                var parts = s.Split(',');
-
-                if (parts.Length == 3 && Guid.TryParse(parts[0], out Guid from) && Guid.TryParse(parts[1], out Guid to) && ulong.TryParse(parts[2], out ulong amount))
-                {
-                    result = new Transaction(from, to, amount);
-                    return true;
-                }
-                else
-                {
-                    result = default;
-                    return false;
-                }
+                return false;
             }
         }
 
         private class User
         {
             public ulong Balance { get; set; }
+            public string Name { get; set; }
             public string Hash { get; set; }
+            public string Email { get; set; }
+            public string Phone { get; set; }
+            public string Address { get; set; }
             public bool Enterprise { get; set; }
+            public List<Transaction> Transactions { get; set; } = new List<Transaction>();
 
             public User() { }
 

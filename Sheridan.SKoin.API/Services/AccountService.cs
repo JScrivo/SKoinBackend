@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 
 namespace Sheridan.SKoin.API.Services
 {
@@ -15,7 +16,11 @@ namespace Sheridan.SKoin.API.Services
             {
                 var result = new RegisterResponse();
 
-                if (Database.TryCreateUser(request.Hash, out Guid user))
+                if (Database.TryCreateUser(request.Hash, out Guid user) &&
+                    Database.TrySetName(user, request.Name) &&
+                    Database.TrySetPhone(user, request.Phone) &&
+                    Database.TrySetEmail(user, request.Email) &&
+                    Database.TrySetAddress(user, request.Address))
                 {
                     result.Success = true;
                     result.Id = user.ToString();
@@ -34,11 +39,11 @@ namespace Sheridan.SKoin.API.Services
             return null;
         }
 
-        [Service("/api/login", ServiceType.Text, typeof(RegisterRequest), typeof(RegisterResponse))]
+        [Service("/api/login", ServiceType.Text, typeof(LoginRequest), typeof(RegisterResponse))]
         [Documentation.Description("API for retrieving the ID of a client that was already registered.")]
         public string Login(string text)
         {
-            if (Json.TryDeserialize(text, out RegisterRequest request) && request.IsValid())
+            if (Json.TryDeserialize(text, out LoginRequest request) && request.IsValid())
             {
                 var result = new RegisterResponse();
 
@@ -69,10 +74,52 @@ namespace Sheridan.SKoin.API.Services
             {
                 var result = new InfoResponse();
 
-                if (Database.TryGetBalance(request.GetId(), out ulong balance))
+                if (Database.TryGetBalance(request.GetId(), out ulong balance) &&
+                    Database.TryGetName(request.GetId(), out string name) &&
+                    Database.TryGetEmail(request.GetId(), out string email) &&
+                    Database.TryGetPhone(request.GetId(), out string phone) &&
+                    Database.TryGetAddress(request.GetId(), out string address) &&
+                    Database.TryGetEnterprise(request.GetId(), out bool enterprise) &&
+                    Database.TryGetTransactions(request.GetId(), out Transaction[] transactions))
                 {
                     result.Success = true;
                     result.Balance = balance;
+                    result.Name = name;
+                    result.Email = email;
+                    result.Phone = phone;
+                    result.Address = address;
+                    result.Enterprise = enterprise;
+                    result.Transactions = transactions.Select(transfer =>
+                    {
+                        if (transfer.From == request.GetId())
+                        {
+                            if (Database.TryGetName(transfer.To, out string name))
+                            {
+                                return new InfoTransaction
+                                {
+                                    Id = transfer.To,
+                                    Name = name,
+                                    Amount = transfer.Amount,
+                                    Outbound = true
+                                };
+                            }
+                        }
+                        else if (transfer.To == request.GetId())
+                        {
+                            if (Database.TryGetName(transfer.From, out string name))
+                            {
+                                return new InfoTransaction
+                                {
+                                    Id = transfer.From,
+                                    Name = name,
+                                    Amount = transfer.Amount,
+                                    Outbound = false
+                                };
+                            }
+                        }
+                        
+                        return null;
+                    }).Where(transfer => !(transfer is null)).ToArray();
                 }
 
                 if (Json.TrySerialize(result, out string json))
@@ -123,10 +170,20 @@ namespace Sheridan.SKoin.API.Services
         {
             [Documentation.Description("The secret hash for the client.")]
             public string Hash { get; set; }
+            [Documentation.Description("The account name.")]
+            public string Name { get; set; }
+            [Documentation.Description("The account email.")]
+            public string Email { get; set; }
+            [Documentation.Description("The account phone number.")]
+            public string Phone { get; set; }
+            [Documentation.Description("The account address.")]
+            public string Address { get; set; } = null;
+            [Documentation.Description("Whether the account is enterprise.")]
+            public bool Enterprise { get; set; } = false;
 
             public virtual bool IsValid()
             {
-                return true; //TODO: Remove. For development purposes only.
+                return !(Hash is null || Name is null || Email is null || Phone is null); //TODO: Remove. For development purposes only.
 
                 try
                 {
@@ -151,14 +208,53 @@ namespace Sheridan.SKoin.API.Services
             public string Id { get; set; } = Guid.Empty.ToString();
         }
 
-        private class InfoRequest : RegisterRequest
+        private class LoginRequest
+        {
+            [Documentation.Description("The secret hash for the client.")]
+            public string Hash { get; set; }
+
+            public virtual bool IsValid()
+            {
+                return !(Hash is null); //TODO: Remove. For development purposes only.
+
+                try
+                {
+                    return Convert.FromBase64String(Hash).Length == 32;
+                }
+                catch (FormatException)
+                {
+                    return false;
+                }
+                catch (ArgumentNullException)
+                {
+                    return false;
+                }
+            }
+        }
+
+        private class InfoRequest
         {
             [Documentation.Description("The user id that was registered with the client's secret hash.")]
             public string Id { get; set; }
+            [Documentation.Description("The secret hash for the client.")]
+            public string Hash { get; set; }
 
-            public override bool IsValid()
+            public virtual bool IsValid()
             {
-                return base.IsValid() && Guid.TryParse(Id, out _);
+                return Guid.TryParse(Id, out _) && !(Hash is null); //TODO: Remove. For development purposes only.
+
+                try
+                {
+                    return Guid.TryParse(Id, out _) && Convert.FromBase64String(Hash).Length == 32;
+                }
+                catch (FormatException)
+                {
+                    return false;
+                }
+                catch (ArgumentNullException)
+                {
+                    return false;
+                }
             }
 
             public Guid GetId()
@@ -173,6 +269,31 @@ namespace Sheridan.SKoin.API.Services
             public bool Success { get; set; } = false;
             [Documentation.Description("The current balance of the account.")]
             public ulong Balance { get; set; } = 0;
+            [Documentation.Description("The account name.")]
+            public string Name { get; set; }
+            [Documentation.Description("The account email.")]
+            public string Email { get; set; } = null;
+            [Documentation.Description("The account phone number.")]
+            public string Phone { get; set; } = null;
+            [Documentation.Description("The account address.")]
+            public string Address { get; set; } = null;
+            [Documentation.Description("Whether the account is an enterprise account.")]
+            public bool Enterprise { get; set; } = false;
+            [Documentation.Children]
+            [Documentation.Description("The transactions made by the account.")]
+            public InfoTransaction[] Transactions { get; set; } = new InfoTransaction[0];
+        }
+
+        private class InfoTransaction
+        {
+            [Documentation.Description("The user id of the other transactor.")]
+            public Guid Id { get; set; } = Guid.Empty;
+            [Documentation.Description("The name of the other transactor.")]
+            public string Name { get; set; } = string.Empty;
+            [Documentation.Description("The amount of the transaction.")]
+            public ulong Amount { get; set; } = 0;
+            [Documentation.Description("Whether the transaction is going out of the user's account.")]
+            public bool Outbound { get; set; } = false;
         }
 
         private class TransferRequest : InfoRequest
