@@ -6,7 +6,7 @@ namespace Sheridan.SKoin.API.Services
     public class AccountService
     {
         [Documentation.Description("The JSON response that is returned if the request is unsuccessful.")]
-        private static readonly string FailedRequest = $"{{\"{nameof(RegisterResponse.Success)}\": {false}}}";
+        private static readonly string FailedRequest = "{\"Success\": false}";
 
         [Service("/api/account/register", ServiceType.Text, typeof(RegisterRequest), typeof(RegisterResponse))]
         [Documentation.Description("API for registering new accounts associated with a secure hash.")]
@@ -39,7 +39,7 @@ namespace Sheridan.SKoin.API.Services
             return null;
         }
 
-        [Service("/api/login", ServiceType.Text, typeof(LoginRequest), typeof(RegisterResponse))]
+        [Service("/api/account/login", ServiceType.Text, typeof(LoginRequest), typeof(RegisterResponse))]
         [Documentation.Description("API for retrieving the ID of a client that was already registered.")]
         public string Login(string text)
         {
@@ -117,7 +117,7 @@ namespace Sheridan.SKoin.API.Services
                                 };
                             }
                         }
-                        
+
                         return null;
                     }).Where(transfer => !(transfer is null)).ToArray();
                 }
@@ -144,6 +144,34 @@ namespace Sheridan.SKoin.API.Services
                 var result = new TransferResponse();
 
                 if (Database.TryTransact(request.GetId(), request.GetRecipient(), request.Amount))
+                {
+                    result.Success = true;
+                }
+
+                if (Json.TrySerialize(result, out string json))
+                {
+                    return json;
+                }
+                else
+                {
+                    return FailedRequest;
+                }
+            }
+
+            return null;
+        }
+
+        [Service("/api/account/redeem", ServiceType.Text, typeof(RedeemRequest), typeof(TransferResponse))]
+        [Documentation.Description("API for redeeming one-time promo codes.")]
+        public string Redeem(string text)
+        {
+            if (Json.TryDeserialize(text, out RedeemRequest request) && request.IsValid() && IsValidIdAndHash(request.GetId(), request.Hash))
+            {
+                var result = new TransferResponse();
+
+                if (Database.TryGetOneTimeSource(request.GetCode(), out bool oneTime) && oneTime &&
+                    Database.TryGetBalance(request.GetCode(), out ulong balance) && balance > 0 &&
+                    Database.TryTransact(request.GetCode(), request.GetId(), balance))
                 {
                     result.Success = true;
                 }
@@ -318,6 +346,21 @@ namespace Sheridan.SKoin.API.Services
         {
             [Documentation.Description("Whether or not the request was successful.")]
             public bool Success { get; set; } = false;
+        }
+
+        private class RedeemRequest : InfoRequest
+        {
+            public string Code { get; set; }
+
+            public override bool IsValid()
+            {
+                return base.IsValid() && Guid.TryParse(Code, out _);
+            }
+
+            public Guid GetCode()
+            {
+                return Guid.Parse(Code);
+            }
         }
     }
 }

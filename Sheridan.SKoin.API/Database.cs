@@ -215,6 +215,20 @@ namespace Sheridan.SKoin.API
             }
         }
 
+        public static bool TryGetOneTimeSource(Guid user, out bool oneTime)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                oneTime = info.OneTimeSource;
+                return true;
+            }
+            else
+            {
+                oneTime = false;
+                return false;
+            }
+        }
+
         public static bool TryGetTransactions(Guid user, out Transaction[] transactions)
         {
             if (TryGetUserInfo(user, out User info))
@@ -290,6 +304,19 @@ namespace Sheridan.SKoin.API
             if (TryGetUserInfo(user, out User info))
             {
                 info.Enterprise = enterprise;
+                return TrySetUserInfo(user, info);
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public static bool TrySetOneTimeSource(Guid user, bool oneTime)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                info.OneTimeSource = oneTime;
                 return TrySetUserInfo(user, info);
             }
             else
@@ -539,13 +566,14 @@ namespace Sheridan.SKoin.API
 
         private class User
         {
-            public ulong Balance { get; set; }
+            public ulong Balance { get; set; } = 0;
             public string Name { get; set; }
             public string Hash { get; set; }
             public string Email { get; set; }
             public string Phone { get; set; }
-            public string Address { get; set; }
-            public bool Enterprise { get; set; }
+            public string Address { get; set; } = null;
+            public bool Enterprise { get; set; } = false;
+            public bool OneTimeSource { get; set; } = false;
             public List<Transaction> Transactions { get; set; } = new List<Transaction>();
 
             public User() { }
