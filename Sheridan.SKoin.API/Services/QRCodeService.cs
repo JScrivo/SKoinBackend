@@ -11,7 +11,7 @@ namespace Sheridan.SKoin.API.Services
         {
             if (Json.TryDeserialize(text, out IdRequest request) && request.TryGetId(out Guid id))
             {
-                var result = new ImageResponse(new PngByteQRCode(new QRCodeGenerator().CreateQrCode(id.ToByteArray(), QRCodeGenerator.ECCLevel.M)).GetGraphic(20));
+                var result = new ImageResponse(new PngByteQRCode(new QRCodeGenerator().CreateQrCode(id.ToString(), QRCodeGenerator.ECCLevel.M)).GetGraphic(20));
 
                 if (Json.TrySerialize(result, out string response))
                 {

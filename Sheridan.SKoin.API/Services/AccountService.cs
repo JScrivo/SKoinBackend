@@ -14,7 +14,7 @@ namespace Sheridan.SKoin.API.Services
         {
             if (Json.TryDeserialize(text, out RegisterRequest request) && request.IsValid())
             {
-                var result = new RegisterResponse();
+                var result = new RegisterResponse { Enterprise = request.Enterprise };
 
                 if (Database.TryCreateUser(request.Hash, out Guid user) &&
                     Database.TrySetName(user, request.Name) &&
@@ -47,10 +47,12 @@ namespace Sheridan.SKoin.API.Services
             {
                 var result = new RegisterResponse();
 
-                if (Database.TryGetUser(request.Hash, out Guid user))
+                if (Database.TryGetUser(request.Hash, out Guid user) &&
+                    Database.TryGetEnterprise(user, out bool enterprise))
                 {
                     result.Success = true;
                     result.Id = user.ToString();
+                    result.Enterprise = enterprise;
                 }
 
                 if (Json.TrySerialize(result, out string json))
@@ -234,6 +236,8 @@ namespace Sheridan.SKoin.API.Services
             public bool Success { get; set; } = false;
             [Documentation.Description("The user id that was registered with the client's secret hash.")]
             public string Id { get; set; } = Guid.Empty.ToString();
+            [Documentation.Description("Whether the account is an enterprise account.")]
+            public bool Enterprise { get; set; }
         }
 
         private class LoginRequest

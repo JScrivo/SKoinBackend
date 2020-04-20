@@ -251,6 +251,8 @@ namespace Sheridan.SKoin.API.Services
             public DateTime StartTime { get; set; }
             [Documentation.Description("The end date and time of the promotion, in UTC.")]
             public DateTime EndTime => StartTime.AddDays(Days);
+            [Documentation.Description("The number of days remaining for this promotion.")]
+            public ulong DaysLeft => (ulong)Math.Max(1, Math.Round((EndTime - DateTime.UtcNow).TotalDays));
 
             public bool IsExpired()
             {
