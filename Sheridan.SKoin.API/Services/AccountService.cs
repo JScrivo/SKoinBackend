@@ -20,7 +20,8 @@ namespace Sheridan.SKoin.API.Services
                     Database.TrySetName(user, request.Name) &&
                     Database.TrySetPhone(user, request.Phone) &&
                     Database.TrySetEmail(user, request.Email) &&
-                    Database.TrySetAddress(user, request.Address))
+                    Database.TrySetAddress(user, request.Address) &&
+                    Database.TrySetEnterprise(user, request.Enterprise))
                 {
                     result.Success = true;
                     result.Id = user.ToString();
