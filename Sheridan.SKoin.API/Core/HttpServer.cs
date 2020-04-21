@@ -100,13 +100,20 @@ namespace Sheridan.SKoin.API.Core
                 var network = client.GetStream();
                 var stream = new MemoryStream();
 
-                int times = 500;
+                int times = MaxConnectionTime / 10;
                 while (client.Available <= 0)
                 {
                     Thread.Sleep(10);
                     times--;
 
                     if (times <= 0) break;
+                }
+
+                int lastAvail = 0;
+                while (lastAvail != client.Available)
+                {
+                    lastAvail = client.Available;
+                    Thread.Sleep(100);
                 }
 
                 var requestBytes = new byte[client.Available];
