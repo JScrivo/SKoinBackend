@@ -64,23 +64,17 @@ namespace Sheridan.SKoin.API.Services
             {
                 var result = new UpgradeResponse { Success = false };
 
-                if (Database.TryGetPromotion(request.Id, out string json))
+                if (Database.TryGetPromotion(request.Id, out Promotion promotion))
                 {
-                    if (Json.TryDeserialize(json, out Promotion promotion))
-                    {
-                        promotion.Likes++;
+                    promotion.Likes++;
 
-                        if (Json.TrySerialize(promotion, out json))
-                        {
-                            if (Database.TryCreatePromotion(request.Id, json, true))
-                            {
-                                result.Success = true;
-                            }
-                        }
+                    if (Database.TryCreatePromotion(request.Id, promotion, true))
+                    {
+                        result.Success = true;
                     }
                 }
 
-                if (Json.TrySerialize(result, out json))
+                if (Json.TrySerialize(result, out string json))
                 {
                     return json;
                 }
@@ -97,13 +91,14 @@ namespace Sheridan.SKoin.API.Services
         [Documentation.Description("API for creating promotions.")]
         public static string CreatePromotion(string text)
         {
-            if (Json.TryDeserialize(text, out PromotionPostRequest request) && request.IsValid() && 
+            if (Json.TryDeserialize(text, out PromotionPostRequest request) && request.IsValid() &&
                 IsValidIdAndHash(request.GetId(), request.Hash) && IsEnterprise(request.GetId()))
             {
                 var response = new UpgradeResponse();
 
                 var promotion = new Promotion
                 {
+                    Owner = request.GetId().ToString(),
                     Id = Guid.NewGuid().ToString(),
                     Title = request.Title,
                     IconURI = request.IconURI,
@@ -115,7 +110,7 @@ namespace Sheridan.SKoin.API.Services
                     StartTime = DateTime.UtcNow
                 };
 
-                if (Json.TrySerialize(promotion, out string promoJson) && Database.TryCreatePromotion(promotion.Id, promoJson))
+                if (Database.TryCreatePromotion(promotion.Id, promotion))
                 {
                     response.Success = true;
                 }
@@ -226,37 +221,6 @@ namespace Sheridan.SKoin.API.Services
             public Guid GetPromotionId()
             {
                 return Guid.Parse(PromotionId);
-            }
-        }
-
-        private class Promotion
-        {
-            [Documentation.Description("The id of the promotion.")]
-            public string Id { get; set; }
-            [Documentation.Description("The title of the promotion.")]
-            public string Title { get; set; }
-            [Documentation.Description("The URI to the icon image for the promotion.")]
-            public string IconURI { get; set; }
-            [Documentation.Description("The URI to the cover image for the promotion.")]
-            public string CoverURI { get; set; }
-            [Documentation.Description("The cost of the advertised item. 0 if the promotion is not for a specific item with a cost.")]
-            public ulong Cost { get; set; }
-            [Documentation.Description("The description of the promotion.")]
-            public string Description { get; set; }
-            [Documentation.Description("The length of the promotion, in days.")]
-            public ulong Days { get; set; }
-            [Documentation.Description("The number of likes this promotion has.")]
-            public ulong Likes { get; set; }
-            [Documentation.Description("The start date and time of the promotion, in UTC.")]
-            public DateTime StartTime { get; set; }
-            [Documentation.Description("The end date and time of the promotion, in UTC.")]
-            public DateTime EndTime => StartTime.AddDays(Days);
-            [Documentation.Description("The number of days remaining for this promotion.")]
-            public ulong DaysLeft => (ulong)Math.Max(1, Math.Round((EndTime - DateTime.UtcNow).TotalDays));
-
-            public bool IsExpired()
-            {
-                return EndTime < DateTime.UtcNow;
             }
         }
 

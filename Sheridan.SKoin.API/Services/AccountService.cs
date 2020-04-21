@@ -123,6 +123,12 @@ namespace Sheridan.SKoin.API.Services
 
                         return null;
                     }).Where(transfer => !(transfer is null)).ToArray();
+
+                    if (enterprise && Database.TryGetUserPromotions(request.GetId(), out Promotion[] promotions))
+                    {
+                        Console.WriteLine("Retrieved promotions.");
+                        result.Promotions = promotions;
+                    }
                 }
 
                 if (Json.TrySerialize(result, out string json))
@@ -315,6 +321,9 @@ namespace Sheridan.SKoin.API.Services
             [Documentation.Children]
             [Documentation.Description("The transactions made by the account.")]
             public InfoTransaction[] Transactions { get; set; } = new InfoTransaction[0];
+            [Documentation.Children]
+            [Documentation.Description("The promotions create by the account.")]
+            public Promotion[] Promotions { get; set; } = new Promotion[0];
         }
 
         private class InfoTransaction

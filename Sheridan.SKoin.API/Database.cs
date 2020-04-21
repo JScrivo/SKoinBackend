@@ -345,7 +345,7 @@ namespace Sheridan.SKoin.API
             return result.ToArray();
         }
 
-        public static bool TryCreatePromotion(string name, string promotion, bool allowOverride = false)
+        public static bool TryCreatePromotion(string name, Promotion promotion, bool allowOverride = false)
         {
             var location = GetPromotionLocation(name);
 
@@ -353,9 +353,18 @@ namespace Sheridan.SKoin.API
 
             try
             {
-                File.WriteAllText(location, promotion);
+                if (Json.TrySerialize(promotion, out string json) && Guid.TryParse(promotion.Owner, out Guid id) && TryGetUserInfo(id, out User info))
+                {
+                    File.WriteAllText(location, json);
 
-                return true;
+                    info.Promotions.Add(promotion);
+
+                    return TrySetUserInfo(id, info);
+                }
+                else
+                {
+                    return false;
+                }
             }
             catch
             {
@@ -363,7 +372,7 @@ namespace Sheridan.SKoin.API
             }
         }
 
-        public static bool TryGetPromotion(string name, out string promotion)
+        public static bool TryGetPromotion(string name, out Promotion promotion)
         {
             var location = GetPromotionLocation(name);
 
@@ -371,14 +380,27 @@ namespace Sheridan.SKoin.API
             {
                 try
                 {
-                    promotion = File.ReadAllText(location);
-                    return true;
+                    return Json.TryDeserialize(File.ReadAllText(location), out promotion);
                 }
                 catch { }
             }
 
             promotion = null;
             return false;
+        }
+
+        public static bool TryGetUserPromotions(Guid user, out Promotion[] promotions)
+        {
+            if (TryGetUserInfo(user, out User info))
+            {
+                promotions = info.Promotions.ToArray();
+                return true;
+            }
+            else
+            {
+                promotions = null;
+                return false;
+            }
         }
 
         public static bool TryRemovePromotion(string name)
@@ -575,6 +597,7 @@ namespace Sheridan.SKoin.API
             public bool Enterprise { get; set; } = false;
             public bool OneTimeSource { get; set; } = false;
             public List<Transaction> Transactions { get; set; } = new List<Transaction>();
+            public List<Promotion> Promotions { get; set; } = new List<Promotion>();
 
             public User() { }
 
