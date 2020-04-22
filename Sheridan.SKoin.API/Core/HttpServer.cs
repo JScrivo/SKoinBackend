@@ -65,6 +65,7 @@ namespace Sheridan.SKoin.API.Core
             if (!(Listener is null)) return;
 
             Listener = new TcpListener(new IPEndPoint(IPAddress.Any, port));
+            Listener.Server.ReceiveBufferSize = int.MaxValue;
             Listener.Start();
             Listener.BeginAcceptTcpClient(AcceptConnection, null);
         }
@@ -237,10 +238,6 @@ namespace Sheridan.SKoin.API.Core
                 }
                 request.Data = requestData.ToArray();
 
-                Console.WriteLine(string.Empty);
-                Console.WriteLine(Encoding.UTF8.GetString(requestBytes));
-                Console.WriteLine(string.Empty);
-
                 byte[] returnData;
                 if (state == HttpReceiveState.Invalid)
                 {
@@ -253,6 +250,14 @@ namespace Sheridan.SKoin.API.Core
 
                 client.Client.Send(returnData);
 
+                try
+                {
+                    client.Close();
+                }
+                catch { }
+
+                Console.WriteLine(string.Empty);
+                Console.WriteLine(Encoding.UTF8.GetString(requestBytes));
                 Console.WriteLine(string.Empty);
                 Console.WriteLine(Encoding.UTF8.GetString(returnData));
                 Console.WriteLine(string.Empty);
@@ -260,13 +265,13 @@ namespace Sheridan.SKoin.API.Core
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
-            }
 
-            try
-            {
-                client.Close();
+                try
+                {
+                    client.Close();
+                }
+                catch { }
             }
-            catch { }
         }
 
         private byte[] ProcessRequest(HttpRequest request)
